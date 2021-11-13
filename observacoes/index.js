@@ -1,6 +1,7 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid') //Pacote que gera IDs fortemente
+const axios = require('axios')
 
 const app = express()
 app.use(bodyParser.json())
@@ -13,7 +14,7 @@ app.get('/lembretes/:id/observacoes', (req, res) => {
     res.send(observacoesPorLembreteId[req.params.id] || [])
 })
 
-app.post(`/lembretes/:id/observacoes`, (req, res) => {
+app.post(`/lembretes/:id/observacoes`, async (req, res) => {
     const idObs = uuidv4()
     const { texto } = req.body
     const idLembrete = req.params.id
@@ -23,8 +24,22 @@ app.post(`/lembretes/:id/observacoes`, (req, res) => {
     observacoesDoLembrete.push({ id: idObs, texto })
     //Atribuimos ao OBJETO com o ID da REQUISICAO o ARRAY criado acima
     observacoesPorLembreteId[idLembrete] = observacoesDoLembrete
+    //Enviando os DADOS para o barramentos de eventos para que possa ficar disponivel para todos os microsserviços que desejarem "ouvir"
+    await axios.post('http://localhost:10000/eventos', {
+        tipo: "Observacao criada",
+        dados: {
+            id: idObs,
+            texto,
+            lembreteId: req.params.id
+        }
+    })
     //Exibimos o ARRAY criado
     res.status(201).send(observacoesDoLembrete)
 })
 
-app.listen(3000, () => console.log("3000 post available for observartions"))
+app.post('/eventos', (req, res) => {
+    console.log(req.body)
+    res.status(204).end()
+})
+
+app.listen(5000, () => console.log("5000 post available for observartions"))
