@@ -1,5 +1,6 @@
 const express = require('express') //Importação
 const bodyParser = require('body-parser') //Isso é um "middleware"
+const axios = require('axios')
 
 const app = express() //Atribuo a uma constante o pacote EXPRESS para assim utilizar dos METODOS HTTP
 
@@ -14,7 +15,7 @@ app.get('/lembretes', (req, res) => {
     res.status(200).send(lembretes) //Passamos um STATUS 200 para indicar que "OK" a reposta está sendo enviada e com o SEND enviamos nosso OBJ como retorno
 })
 
-app.post('/lembretes', (req, res) => {
+app.post('/lembretes', async (req, res) => {
     contador++
     /* EXPLICANDO DESTRTUTURAÇÃO *
         Esse "const {texto, data} = req.body" teria a mesma função de se fazer:
@@ -53,8 +54,21 @@ app.post('/lembretes', (req, res) => {
     //Acessamos o OBJETO "lembretes" apartir de um indice CONTADOR (que seria 0, mas como temos um "contador++" começa com 1) e abatir de desse OBJETO com uma chave "1"-
     //-Nós atribuimos como valor a CHAVE 1 um novo OBJETO que tem suas chaves e seus valores
     lembretes[contador] = { contador: contador, texto: texto }
+    //Dessa forma eu envio para o BARRAMENTO DE EVENTOS os dados manipulados nestes POST neste MICROSSERVIÇO
+    await axios.post('http://localhost:10000/eventos', {
+        tipo: "Lembrete criado",
+        dados: {
+            contador,
+            texto
+        }
+    })
     //201 --> CREATED
     res.status(201).send(lembretes[contador])
+})
+
+app.post('/eventos', (req, res) => {
+    console.log(req.body)
+    res.status(204).end()
 })
 
 //Com esse LISTEN eu consigo passar uma PORTA de hospedagem no primeiro parametro e no segundo uma ARROW FUNCTION
